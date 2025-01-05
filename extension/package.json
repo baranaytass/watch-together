@@ -1,0 +1,23 @@
+{
+  "name": "watch-together-extension",
+  "version": "1.0.0",
+  "description": "Watch Together Chrome Extension",
+  "scripts": {
+    "build": "webpack --config webpack.config.js",
+    "watch": "webpack --watch --config webpack.config.js",
+    "dev": "webpack --config webpack.config.js --mode development",
+    "prod": "webpack --config webpack.config.js --mode production"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.289",
+    "@types/node": "^20.10.6",
+    "copy-webpack-plugin": "^11.0.0",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.0.0",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.7.2"
+  }
+}

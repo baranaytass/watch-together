@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: 
+      context: ./web
+      dockerfile: ../docker/web.dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_WEBSOCKET_URL=ws://localhost:8080
+    depends_on:
+      - backend
+      - websocket
+
+  extension:
+    build:
+      context: ./extension
+      dockerfile: ../docker/extension.dockerfile
+    ports:
+      - "8081:80"
+    volumes:
+      - ./extension:/app
+
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: ../docker/backend.dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/watchtogether
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  websocket:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.websocket
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=watchtogether
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mongodb_data:
+  redis_data:
