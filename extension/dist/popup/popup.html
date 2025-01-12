@@ -1,14 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <link rel="stylesheet" href="popup.css">
+    <title>Watch Together</title>
+    <link rel="stylesheet" type="text/css" href="popup.css">
 </head>
 <body>
-  <div class="container">
-    <div id="status-message"></div>
-    <button id="startButton" class="primary-button">Start Watching</button>
-  </div>
-  <script src="popup.js"></script>
+    <div class="container">
+        <h1>Watch Together</h1>
+        <div id="status" class="status"></div>
+        <button id="detectButton" class="button">Detect Provider</button>
+        <button id="startButton" class="button" style="display: none;">Start Session</button>
+    </div>
+    <script src="popup.js"></script>
 </body>
-</html> 
+</html>

@@ -1,26 +1,17 @@
 {
   "manifest_version": 3,
-  "name": "Watch Together",
+  "name": "Watch Movies with My Babe <3",
   "version": "1.0.0",
-  "description": "Watch videos synchronously with friends",
+  "description": "Watch videos together with your friends",
   "permissions": [
     "activeTab",
-    "tabs"
+    "tabs",
+    "clipboardWrite"
   ],
   "host_permissions": [
-    "*://*.youtube.com/*",
-    "*://*.vimeo.com/*"
+    "http://localhost:5000/*"
   ],
   "action": {
     "default_popup": "popup/popup.html"
-  },
-  "content_scripts": [
-    {
-      "matches": [
-        "*://*.youtube.com/*",
-        "*://*.vimeo.com/*"
-      ],
-      "js": ["content/content.js"]
-    }
-  ]
+  }
 }
