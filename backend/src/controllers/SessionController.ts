@@ -1,73 +1,72 @@
-import { Request, Response } from 'express';
-import SessionService from '../services/SessionService';
-import ProviderService from '../services/ProviderService';
+import { Request, Response, NextFunction } from 'express';
+import { v4 as uuidv4 } from 'uuid';
+import { BadRequestError, NotFoundError } from '../utils/errors';
+import { logInfo, logError } from '../utils/logger';
+import redisService from '../services/RedisService';
 
 export class SessionController {
-    async createSession(req: Request, res: Response) {
+    async createSession(req: Request, res: Response, next: NextFunction) {
         try {
-            const { videoUrl, provider } = req.body;
+            const { videoUrl } = req.body;
 
-            if (!videoUrl || !provider) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Video URL and provider are required'
-                });
+            if (!videoUrl) {
+                throw new BadRequestError('Video URL is required');
             }
 
-            // Provider'ın desteklenip desteklenmediğini kontrol et
-            const providerExists = await ProviderService.findByDomain(provider);
-            if (!providerExists) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Unsupported provider'
-                });
-            }
+            const sessionId = uuidv4();
+            const sessionData = {
+                id: sessionId,
+                videoUrl,
+                createdAt: new Date(),
+                participants: []
+            };
 
-            const sessionId = await SessionService.createSession(videoUrl, provider);
+            await redisService.setSession(sessionId, sessionData);
 
-            return res.json({
+            logInfo('Session created successfully', { sessionId, videoUrl });
+
+            res.status(201).json({
                 success: true,
-                sessionId
+                session: {
+                    id: sessionId,
+                    url: `${process.env.FRONTEND_URL}/watch/${sessionId}`
+                }
             });
         } catch (error) {
-            console.error('Error in createSession:', error);
-            return res.status(500).json({
-                success: false,
-                message: 'Internal server error'
+            logError(error as Error, {
+                context: 'SessionController.createSession',
+                body: req.body
             });
+            next(error);
         }
     }
 
-    async getSession(req: Request, res: Response) {
+    async getSession(req: Request, res: Response, next: NextFunction) {
         try {
             const { sessionId } = req.params;
 
             if (!sessionId) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Session ID is required'
-                });
+                throw new BadRequestError('Session ID is required');
             }
 
-            const session = await SessionService.getSession(sessionId);
+            const session = await redisService.getSession(sessionId);
 
             if (!session) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Session not found'
-                });
+                throw new NotFoundError('Session not found');
             }
 
-            return res.json({
+            logInfo('Session retrieved successfully', { sessionId });
+
+            res.json({
                 success: true,
                 session
             });
         } catch (error) {
-            console.error('Error in getSession:', error);
-            return res.status(500).json({
-                success: false,
-                message: 'Internal server error'
+            logError(error as Error, {
+                context: 'SessionController.getSession',
+                sessionId: req.params.sessionId
             });
+            next(error);
         }
     }
 }

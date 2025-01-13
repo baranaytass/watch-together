@@ -1,32 +1,23 @@
-# Multi-stage build
-FROM node:18-alpine AS builder
-
-WORKDIR /app
-
-# Package dosyalarını kopyala ve bağımlılıkları yükle
-COPY web/package*.json ./
-RUN npm ci
-
-# Kaynak kodları kopyala ve derle
-COPY web/ .
-RUN npm run build
-
-# Production imajı
+# Development image
 FROM node:18-alpine
 
 WORKDIR /app
 
-# Sadece gerekli dosyaları kopyala
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/package*.json ./
-RUN npm ci --only=production
+# Copy package files in a separate layer
+COPY web/package*.json ./
 
-# Güvenlik için non-root kullanıcı
+# Install development dependencies
+RUN npm ci
+
+# Copy source code in a separate layer
+COPY web/ .
+
+# Set up non-root user for security
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-RUN chown -R appuser:appgroup /app
+RUN mkdir -p /app/.next && chown -R appuser:appgroup /app
 USER appuser
 
-ENV NODE_ENV=production
+ENV NODE_ENV=development
 EXPOSE 3000
 
-CMD ["npm", "start"]
+CMD ["npm", "run", "dev"]

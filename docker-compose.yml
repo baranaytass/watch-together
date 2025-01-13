@@ -11,7 +11,11 @@ services:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://backend:5000
-      - NODE_ENV=production
+      - NODE_ENV=development
+    volumes:
+      - ./web:/app
+      - web-node-modules:/app/node_modules
+      - web-next:/app/.next
     depends_on:
       backend:
         condition: service_healthy
@@ -39,7 +43,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - PORT=5000
       - NODE_ENV=development
-      - FRONTEND_URL=http://localhost:3000
+      - FRONTEND_URL=http://web:3000
       - MONGODB_RETRY_ATTEMPTS=5
       - MONGODB_RETRY_DELAY=5000
       - MONGODB_CONNECTION_TIMEOUT=30000
@@ -111,3 +115,5 @@ networks:
 volumes:
   mongo-data:
   redis-data:
+  web-node-modules:
+  web-next:

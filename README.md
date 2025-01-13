@@ -166,6 +166,49 @@ npm install
 npm run build
 ```
 
+## Development Commands
+
+### Initial Setup
+```bash
+# Start all services
+docker-compose up -d
+
+# Start only web application
+docker-compose up -d web
+```
+
+### Daily Development Operations
+```bash
+# View web application logs
+docker-compose logs -f web
+
+# Restart web application (usually not needed for code changes)
+docker-compose restart web
+
+# When dependencies change (package.json updates)
+docker-compose up -d --build web
+
+# Clean all containers and volumes (for cache cleanup)
+docker-compose down -v
+```
+
+### Performance Tips
+
+1. **Hot Reload**: Web application runs with Next.js hot reload feature. Your code changes will be reflected automatically.
+
+2. **Volume Usage**: 
+   - `node_modules` and `.next` directories are stored in Docker volumes
+   - Source code is bind mounted from host to container
+   - Benefits:
+     - Dependencies are not reinstalled on every build
+     - Build outputs are preserved
+     - Code changes are reflected instantly
+
+3. **Build Optimization**:
+   - `.dockerignore` removes unnecessary files from build context
+   - Multi-stage build reduces image size
+   - Separate Dockerfile configuration for development
+
 ## Project Structure
 
 ```

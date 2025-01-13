@@ -1,117 +1,115 @@
-class PopupManager {
-    private detectButton: HTMLButtonElement;
-    private startButton: HTMLButtonElement;
-    private statusElement: HTMLDivElement;
-    private currentDomain: string | null = null;
+import { config } from '../config';
 
-    constructor() {
-        this.detectButton = document.getElementById('detectButton') as HTMLButtonElement;
-        this.startButton = document.getElementById('startButton') as HTMLButtonElement;
-        this.statusElement = document.getElementById('status') as HTMLDivElement;
+document.addEventListener('DOMContentLoaded', () => {
+    const detectButton = document.getElementById('detectButton') as HTMLButtonElement;
+    const startButton = document.getElementById('startButton') as HTMLButtonElement;
+    const statusText = document.getElementById('status') as HTMLDivElement;
+    const sessionUrlContainer = document.getElementById('sessionUrlContainer') as HTMLDivElement;
+    const sessionUrlText = document.getElementById('sessionUrl') as HTMLDivElement;
+    const copyButton = document.getElementById('copyButton') as HTMLButtonElement;
 
-        if (!this.detectButton || !this.startButton || !this.statusElement) {
-            console.error('Required elements not found');
-            return;
-        }
+    let currentUrl: string | null = null;
 
-        this.initialize();
-    }
+    const showStatus = (message: string, type: 'error' | 'success' | 'info') => {
+        statusText.textContent = message;
+        statusText.className = type;
+        statusText.style.display = 'block';
+    };
 
-    private initialize(): void {
-        this.detectButton.addEventListener('click', () => this.handleDetectProvider());
-        this.startButton.addEventListener('click', () => this.handleStartSession());
-    }
+    const hideStatus = () => {
+        statusText.style.display = 'none';
+        statusText.className = '';
+    };
 
-    private async getCurrentTab(): Promise<chrome.tabs.Tab> {
-        const queryOptions = { active: true, currentWindow: true };
-        const [tab] = await chrome.tabs.query(queryOptions);
-        return tab;
-    }
-
-    private async handleDetectProvider(): Promise<void> {
+    detectButton.addEventListener('click', async () => {
         try {
-            const tab = await this.getCurrentTab();
+            // Get current tab URL
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (!tab.url) {
-                this.updateStatus('No active tab found');
-                return;
+                throw new Error('No URL found');
             }
 
-            const domain = new URL(tab.url).hostname;
-            this.currentDomain = domain;
+            currentUrl = tab.url;
+            detectButton.disabled = true;
+            showStatus('Checking provider...', 'info');
 
-            const response = await fetch(`http://localhost:5000/api/providers/check?domain=${domain}`);
+            // Extract domain from URL
+            const domain = new URL(tab.url).hostname;
+
+            // Check if provider is supported
+            const response = await fetch(`${config.apiUrl}/providers/check?url=${encodeURIComponent(tab.url)}`);
             const data = await response.json();
 
-            if (data.success && data.isSupported) {
-                this.updateStatus('Provider supported!');
-                this.startButton.style.display = 'block';
+            if (!data.success) {
+                throw new Error(data.error?.message || 'Failed to check provider');
+            }
+
+            if (data.isSupported) {
+                hideStatus();
+                startButton.style.display = 'flex';
+                detectButton.style.display = 'none';
             } else {
-                this.updateStatus('Provider not supported');
-                this.startButton.style.display = 'none';
+                showStatus('This video provider is not supported', 'error');
+                detectButton.disabled = false;
             }
         } catch (error) {
-            console.error('Error detecting provider:', error);
-            this.updateStatus('Error detecting provider');
+            showStatus(error instanceof Error ? error.message : 'An error occurred', 'error');
+            detectButton.disabled = false;
         }
-    }
+    });
 
-    private async handleStartSession(): Promise<void> {
-        if (!this.currentDomain) {
-            this.updateStatus('No domain detected');
+    startButton.addEventListener('click', async () => {
+        if (!currentUrl) {
+            showStatus('No URL found', 'error');
             return;
         }
 
         try {
-            const tab = await this.getCurrentTab();
-            const response = await fetch('http://localhost:5000/api/sessions', {
+            startButton.disabled = true;
+            showStatus('Creating session...', 'info');
+
+            // Create session
+            const response = await fetch(`${config.apiUrl}/sessions`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    videoUrl: tab.url,
-                    provider: this.currentDomain
+                    videoUrl: currentUrl
                 })
             });
 
             const data = await response.json();
-
-            if (data.success) {
-                const shareLink = `http://localhost:5000/watch/${data.sessionId}`;
-                this.updateStatus(`Session created! Share link: ${shareLink}`);
-                
-                // Link'i kopyalamak için bir buton ekle
-                const copyButton = document.createElement('button');
-                copyButton.textContent = 'Copy Link';
-                copyButton.className = 'button';
-                copyButton.onclick = () => {
-                    navigator.clipboard.writeText(shareLink)
-                        .then(() => {
-                            copyButton.textContent = 'Copied!';
-                            setTimeout(() => {
-                                copyButton.textContent = 'Copy Link';
-                            }, 2000);
-                        })
-                        .catch(err => console.error('Failed to copy:', err));
-                };
-                
-                this.statusElement.appendChild(document.createElement('br'));
-                this.statusElement.appendChild(copyButton);
-            } else {
-                this.updateStatus('Failed to create session');
+            if (!data.success) {
+                throw new Error(data.error?.message || 'Failed to create session');
             }
+
+            // Show session URL
+            sessionUrlText.textContent = data.session.url;
+            sessionUrlContainer.style.display = 'block';
+            showStatus('Session created successfully!', 'success');
+
         } catch (error) {
-            console.error('Error creating session:', error);
-            this.updateStatus('Error creating session');
+            showStatus(error instanceof Error ? error.message : 'An error occurred', 'error');
+            startButton.disabled = false;
         }
-    }
+    });
 
-    private updateStatus(message: string): void {
-        this.statusElement.textContent = message;
-    }
-}
-
-// Popup yüklendiğinde başlat
-document.addEventListener('DOMContentLoaded', () => {
-    new PopupManager();
+    copyButton.addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(sessionUrlText.textContent || '');
+            const originalText = copyButton.innerHTML;
+            copyButton.innerHTML = `
+                <svg class="icon" viewBox="0 0 24 24">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                </svg>
+                Copied!
+            `;
+            setTimeout(() => {
+                copyButton.innerHTML = originalText;
+            }, 2000);
+        } catch (error) {
+            showStatus('Failed to copy to clipboard', 'error');
+        }
+    });
 }); 
